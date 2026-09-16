@@ -1,0 +1,40 @@
+# Find My → Home Assistant MQTT bridge config.
+# Copy to config.yaml and edit. ${MQTT_USERNAME} and ${MQTT_PASSWORD} are read
+# from the environment when the config loads; the LaunchAgent wrapper
+# (launchd/run-bridge.sh) sources them from .env.
+
+mqtt:
+  host: mqtt.example.com        # your MQTT broker
+  port: 8883
+  tls: true
+  username: ${MQTT_USERNAME}
+  password: ${MQTT_PASSWORD}
+  base_topic: findmy
+  discovery_prefix: homeassistant
+  client_id: findmy-bridge
+
+# Zones are NOT configured here: the bridge publishes GPS coordinates to the
+# device_tracker's json_attributes_topic and Home Assistant resolves the state
+# (home / a zone name like "Work" / not_home) natively from those coordinates.
+
+# FindMy refreshes its cache ~every 20s while the VM is kept awake (see the
+# findmy-keepawake LaunchAgent), so poll at 10s to deliver new fixes promptly
+# (HA dedupes unchanged republishes, so this doesn't spam last_updated).
+poll_interval_seconds: 10
+
+# Paths on the Mac (the defaults match a clone at ~/findmy-mqtt-bridge/).
+cache_dir: ~/Library/Caches/com.apple.findmy.fmipcore
+extractor_bin: ~/findmy-mqtt-bridge/extractor/fmip_keydump
+health_path: /tmp/findmy-bridge-healthy
+log_level: INFO
+
+filters:
+  exclude: []            # UUIDs or display names to skip entirely
+  name_overrides: {}     # "<uuid>": "Friendly Name"
+
+# Optional override of the item (AirTag) batteryStatus int → label mapping
+# (higher = healthier; Apple's enum is undocumented). Defaults live in battery.py.
+# item_battery_labels:
+#   0: Unknown
+#   4: Good
+#   5: Full

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Keeps the headless VM awake + FindMy running so the Find My cache keeps
+     refreshing (~every 20s). Without this the VM goes idle and refreshes
+     stop. LaunchAgent template (GUI session) — see findmy-keepawake.sh and
+     install.sh, or install it by hand the same way as
+     com.example.findmy-bridge.plist. -->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.example.findmy-keepawake</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>__BRIDGE_DIR__/launchd/findmy-keepawake.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<key>ProcessType</key>
+	<string>Background</string>
+	<key>StandardOutPath</key>
+	<string>__BRIDGE_DIR__/logs/keepawake.out.log</string>
+	<key>StandardErrorPath</key>
+	<string>__BRIDGE_DIR__/logs/keepawake.err.log</string>
+</dict>
+</plist>

@@ -1,0 +1,10 @@
+.venv/
+.env
+config.yaml
+logs/
+__pycache__/
+*.pyc
+.pytest_cache/
+# compiled extractor binary (built at deploy)
+extractor/fmip_keydump
+extractor/config.plist.dockur-template

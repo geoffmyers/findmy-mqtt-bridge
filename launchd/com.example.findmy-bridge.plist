@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- LaunchAgent template (GUI session) — the Find My cache + data-protection
+     keychain belong to the logged-in user, so this must run as an agent, not
+     a daemon. install.sh substitutes __BRIDGE_DIR__ for the directory you
+     cloned into and installs the result to ~/Library/LaunchAgents/. To do it
+     by hand instead, from that directory:
+       sed 's|__BRIDGE_DIR__|'"$PWD"'|g' launchd/com.example.findmy-bridge.plist \
+         > ~/Library/LaunchAgents/com.example.findmy-bridge.plist
+       launchctl bootstrap "gui/$(id -u)" \
+         ~/Library/LaunchAgents/com.example.findmy-bridge.plist
+     Change the Label (and the matching filename) if you run more than one
+     instance on the same machine. -->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.example.findmy-bridge</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>__BRIDGE_DIR__/launchd/run-bridge.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<dict>
+		<key>SuccessfulExit</key>
+		<false/>
+	</dict>
+	<key>ThrottleInterval</key>
+	<integer>30</integer>
+	<key>ProcessType</key>
+	<string>Background</string>
+	<key>StandardOutPath</key>
+	<string>__BRIDGE_DIR__/logs/bridge.out.log</string>
+	<key>StandardErrorPath</key>
+	<string>__BRIDGE_DIR__/logs/bridge.err.log</string>
+</dict>
+</plist>
