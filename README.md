@@ -73,9 +73,16 @@ for what that trade-off actually buys you.
   cache in 14.4. This bridge has been validated on 14.8. **macOS 15 and
   later are not supported** — Apple moved the key behind additional
   protection there, and this project's decrypt path does not follow it.
+  `install.sh` and the bridge itself both detect macOS 15+ and fail with an
+  explicit "not supported" error rather than a confusing extraction failure.
 - **SIP and AMFI disabled** on the machine that runs the bridge. Read
   [Permissions and security](#permissions-and-security) before you do this —
-  it is a real trade-off, not a checkbox.
+  it is a real trade-off, not a checkbox. Before doing it, run
+  `./install.sh --precheck` (or
+  [`scripts/findmy-sipoff-precheck.sh`](scripts/findmy-sipoff-precheck.sh)
+  directly) — a read-only check of SIP/NVRAM status, whether there's a
+  Recovery volume to boot, and whether the Swift toolchain needed to build
+  the key-extractor helper is present.
 - **Python 3.9+**, `swiftc` and `codesign` (both ship with Xcode Command Line
   Tools) to build and ad-hoc-sign the key-extractor helper.
 - An MQTT broker with Home Assistant's [MQTT integration](https://www.home-assistant.io/integrations/mqtt/)
@@ -90,7 +97,8 @@ cd findmy-mqtt-bridge
 cp config.example.yaml config.yaml
 $EDITOR config.yaml   # at minimum, set mqtt.host
 
-printf 'MQTT_USERNAME=your-username\nMQTT_PASSWORD=your-password\n' > .env
+cp .env.example .env
+$EDITOR .env          # MQTT_USERNAME and MQTT_PASSWORD
 chmod 600 .env
 
 ./install.sh
@@ -179,6 +187,12 @@ for the mechanics).
 - **Run this on a machine dedicated to the purpose** — a virtual machine or a
   spare Mac, not your daily driver, and not one holding anything you would
   not want exposed if that machine were compromised.
+- **Check readiness before you flip SIP off.** `./install.sh --precheck`
+  (wraps [`scripts/findmy-sipoff-precheck.sh`](scripts/findmy-sipoff-precheck.sh))
+  is read-only — it reports current SIP/NVRAM state, whether a Recovery
+  volume is available to boot into, and whether the toolchain to build the
+  extractor is present, so you know what you're about to change before you
+  change it.
 - **The bridge only ever reads what the signed-in Find My app on that
   machine can already see:** the devices and items on the Apple ID it is
   signed in to. It has no path to any other account's data — there is no

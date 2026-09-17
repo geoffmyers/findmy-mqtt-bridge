@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import logging
+import platform
 import re
 import subprocess
 
@@ -22,6 +23,29 @@ _KEY_RE = re.compile(r"^KEY service=(?P<svc>\S+) len=\d+ DATA_B64=(?P<b64>\S+)$"
 
 class KeyExtractionError(RuntimeError):
     pass
+
+
+def macos_major_version() -> int | None:
+    """Best-effort major macOS version. Tries ``platform.mac_ver()`` first
+    (no subprocess); some sandboxed/venv Pythons return an empty string from
+    that, so falls back to ``sw_vers -productVersion``. Returns ``None`` if
+    neither source yields a parseable version (e.g. not running on macOS)."""
+    version_str = platform.mac_ver()[0]
+    if not version_str:
+        try:
+            proc = subprocess.run(
+                ["sw_vers", "-productVersion"],
+                capture_output=True, text=True, timeout=5.0,
+            )
+            version_str = proc.stdout.strip()
+        except (OSError, subprocess.TimeoutExpired):
+            version_str = ""
+    if not version_str:
+        return None
+    try:
+        return int(version_str.split(".")[0])
+    except (ValueError, IndexError):
+        return None
 
 
 class KeyProvider:
@@ -43,6 +67,16 @@ class KeyProvider:
             if m and m.group("svc") == self.service:
                 blob = base64.b64decode(m.group("b64"))
                 return symmetric_key(blob)
+        major = macos_major_version()
+        if major is not None and major >= 15:
+            raise KeyExtractionError(
+                f"no {self.service} key in extractor output — running on macOS "
+                f"{major}, which is not supported. This project's decrypt path "
+                "only works on macOS 14.4-14.8 (Sonoma); Apple moved the Find My "
+                "cache key behind additional protection starting in macOS 15. "
+                "See README.md -> Requirements. "
+                f"(rc={proc.returncode}; stderr={proc.stderr.strip()[:200]})"
+            )
         raise KeyExtractionError(
             f"no {self.service} key in extractor output (rc={proc.returncode}); "
             f"stderr={proc.stderr.strip()[:200]}"

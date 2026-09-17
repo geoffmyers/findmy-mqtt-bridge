@@ -9,6 +9,9 @@
 # on a headless machine).
 #
 #   ./install.sh              # install / update, then bootstrap the agents
+#   ./install.sh --precheck   # read-only: is SIP off, is there a Recovery
+#                              # volume, is the Swift toolchain present —
+#                              # see scripts/findmy-sipoff-precheck.sh
 #   ./install.sh --uninstall  # stop and remove the agents (leaves config.yaml
 #                              # and .env in place)
 set -euo pipefail
@@ -34,12 +37,51 @@ require_cmd() {
     command -v "$1" >/dev/null 2>&1 || { echo "missing: $1"; exit 1; }
 }
 
+# This project's decrypt path only works on macOS 14.4-14.8 (Sonoma): Apple
+# moved the Find My cache key behind additional protection starting in
+# macOS 15, and the extractor finds nothing there (see README.md ->
+# Requirements). Fail loudly here instead of letting the LaunchAgent
+# crash-loop on a confusing KeyExtractionError.
+require_supported_macos() {
+    if ! command -v sw_vers >/dev/null 2>&1; then
+        return 0   # not macOS at all — let require_cmd below fail with its own error
+    fi
+    local ver major
+    ver="$(sw_vers -productVersion 2>/dev/null || true)"
+    major="${ver%%.*}"
+    if [[ "${major}" =~ ^[0-9]+$ ]] && [ "${major}" -ge 15 ]; then
+        echo "error: macOS ${ver} detected — this project is not supported there."
+        echo "This project's Find My cache decrypt path only works on macOS"
+        echo "14.4-14.8 (Sonoma); Apple moved the key behind additional protection"
+        echo "starting in macOS 15. See README.md -> Requirements."
+        exit 1
+    fi
+}
+
+precheck() {
+    # Read-only, so it runs regardless of macOS version — useful for seeing
+    # exactly what's blocking you, including on an unsupported macOS 15+.
+    if [[ -x "${BRIDGE_DIR}/scripts/findmy-sipoff-precheck.sh" ]]; then
+        "${BRIDGE_DIR}/scripts/findmy-sipoff-precheck.sh"
+    else
+        echo "scripts/findmy-sipoff-precheck.sh not found or not executable"
+        exit 1
+    fi
+    require_supported_macos
+}
+
 main() {
     if [[ "${1:-}" == "--uninstall" ]]; then
         uninstall
         return 0
     fi
 
+    if [[ "${1:-}" == "--precheck" ]]; then
+        precheck
+        return 0
+    fi
+
+    require_supported_macos
     require_cmd python3
     require_cmd swiftc
     require_cmd codesign
@@ -55,8 +97,9 @@ main() {
 
     if [[ ! -f "${ENV_FILE}" ]]; then
         echo "missing: ${ENV_FILE}"
-        echo "create it with MQTT_USERNAME and MQTT_PASSWORD, e.g.:"
-        echo "    printf 'MQTT_USERNAME=...\\nMQTT_PASSWORD=...\\n' > ${ENV_FILE}"
+        echo "create it from the template:"
+        echo "    cp ${BRIDGE_DIR}/.env.example ${ENV_FILE}"
+        echo "    \$EDITOR ${ENV_FILE}   # MQTT_USERNAME and MQTT_PASSWORD"
         echo "    chmod 600 ${ENV_FILE}"
         exit 1
     fi
